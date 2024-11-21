@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>传感器数据视图</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="section">
+        <h1>传感器数据记录</h1>
+        
+        <canvas id="dataChart" style="width: 100%; max-height: 385px !important;"></canvas>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>温度 (°C)</th>
+                    <th>湿度 (%)</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+                {% for entry in data %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ entry.temperature }}</td>
+                    <td>{{ entry.humidity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 在已有的客户端状态变更日志表格后，增加一个新的sections来显示详细的客户端操作记录 -->
+
+    <div class="section">
+        <h2>客户端状态</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>客户端ID</th>
+                    <th>当前状态</th>
+                    <th>最后活跃时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client_id, status in client_status.items() %}
+                <tr>
+                    <td>{{ client_id }}</td>
+                    <td>{{ status.status }}</td>
+                    <td>{{ status.last_seen.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>客户端状态变更日志</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>客户端ID</th>
+                    <th>动作</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in client_status_log %}
+                <tr>
+                    <td>{{ log.client_id }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>{{ log.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        var ctx = document.getElementById('dataChart').getContext('2d');
+        var chartData = {
+            labels: [{% for entry in data %}'{{ loop.index }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: '温度 (°C)',
+                data: [{% for entry in data %}{{ entry.temperature }}{% if not loop.last %},{% endif %}{% endfor %}],
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)'
+            }, {
+                label: '湿度 (%)',
+                data: [{% for entry in data %}{{ entry.humidity }}{% if not loop.last %},{% endif %}{% endfor %}],
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)'
+            }]
+        };
+
+        var chart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                title: { display: true, text: '温度和湿度变化' },
+                scales: { yAxes: [{ ticks: { beginAtZero: false } }] }
+            }
+        });
+
+        // WebSocket实时更新
+        var socket = io();
+        socket.on('new_data', function(data) {
+            // 更新图表
+            chartData.labels.push(chartData.labels.length + 1);
+            chartData.datasets[0].data.push(data.temperature);
+            chartData.datasets[1].data.push(data.humidity);
+            chart.update();
+
+            // 更新表格
+            var tableBody = document.getElementById('dataTableBody');
+            var newRow = tableBody.insertRow();
+            newRow.insertCell(0).textContent = chartData.labels.length;
+            newRow.insertCell(1).textContent = data.temperature;
+            newRow.insertCell(2).textContent = data.humidity;
+        });
+    </script>
+</body>
+</html>
