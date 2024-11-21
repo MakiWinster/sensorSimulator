@@ -68,6 +68,15 @@ def heartbeat_monitor():
                         "details": f"客户端 {client_id} 心跳超时，自动下线"
                     }
                     client_status_log.append(log_entry)
+
+                    # 新增这段代码
+                    socketio.emit('client_status_update', {
+                        "client_id": client_id, 
+                        "status": "offline", 
+                        "action": "offline_by_heartbeat", 
+                        "timestamp": current_time.strftime("%Y-%m-%d %H:%M:%S"), 
+                        "last_seen": current_time.strftime("%Y-%m-%d %H:%M:%S")
+                    })
         
         # 每3秒检查一次
         time.sleep(3)
@@ -96,7 +105,15 @@ def heartbeat():
                     'last_seen': current_time
                 }
         
+            socketio.emit('client_status_update', {
+                "client_id": client_id,
+                "status": "online",
+                "action": "heartbeat",
+                "timestamp": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_seen": current_time.strftime("%Y-%m-%d %H:%M:%S")
+            })
         return jsonify({"status": "heartbeat received"}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -126,6 +143,15 @@ def client_status():
                 clients_status_dict[client_id] = {"status": "offline", "last_seen": current_time}
             
             client_status_log.append(status_entry)
+
+
+            socketio.emit('client_status_update', {
+                "client_id": client_id,
+                "status": "online" if action == "online" else "offline",
+                "action": action,
+                "timestamp": status_entry['timestamp'],
+                "last_seen": current_time.strftime("%Y-%m-%d %H:%M:%S")
+            })
         
         return jsonify({"status": f"client {action}"}), 200
     except Exception as e:
