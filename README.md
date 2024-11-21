@@ -32,19 +32,19 @@
 - Chart.js
 
 ## 安装与运行
+### 安装依赖
+```bash
+pip install -r requirements.txt
+```
 
 ### 服务端
 ```bash
-# 安装依赖
-pip install flask flask-socketio
 python server.py
 ```
 
 ### 客户端
 ```bash
-# 安装依赖
-pip install pyqt5 requests
-python client.py
+python SensorDataClient.py
 ```
 
 ## 使用说明
