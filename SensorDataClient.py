@@ -147,6 +147,48 @@ class SensorDataClient(QMainWindow):
         except Exception as e:
             print("发送失败:", e)
 
+def send_heartbeat(self):
+    """发送心跳包到服务器"""
+    try:
+        response = requests.post(f"{SERVER_URL}/heartbeat", 
+                                 json={"client_id": self.client_id},
+                                 timeout=2)
+        if response.status_code == 200:
+            print("心跳包发送成功")
+        else:
+            print("心跳包发送失败")
+    except Exception as e:
+        print(f"心跳包发送异常: {e}")
+
+def start_collecting(self):
+    # 重置online通知标记
+    self.online_notified = False
+    
+    if not self.online_notified:
+        self.notify_server("online")
+        self.online_notified = True
+    
+    # 启动数据采集定时器
+    self.timer.start(1000)  # 每秒发送数据
+    
+    # 启动心跳定时器（每3秒发送一次心跳）
+    self.heartbeat_timer = QTimer()
+    self.heartbeat_timer.timeout.connect(self.send_heartbeat)
+    self.heartbeat_timer.start(3000)  # 3秒发送一次心跳
+    
+    self.start_button.setEnabled(False)
+    self.stop_button.setEnabled(True)
+
+def stop_collecting(self):
+    # 停止数据采集定时器
+    self.timer.stop()
+    
+    # 停止心跳定时器
+    if hasattr(self, 'heartbeat_timer'):
+        self.heartbeat_timer.stop()
+    
+    self.start_button.setEnabled(True)
+    self.stop_button.setEnabled(False)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
